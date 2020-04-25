@@ -50,8 +50,8 @@ struct Arguments
 	std::string ns;
 	std::string id;
 
-	Arguments() : id("data") {}
 	Arguments(int argc, char* argv[])
+		: id("data")
 	{
 		for(int i=0; i<argc; ++i)
 		{
@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
 	//write out pre-amble
 
 	//insert a comment to indicate that this file was auto generated from some other file
-	out << "//file auto-generated from" << argv[1] << "by bin2h.exe\n";
+	out << "//file auto-generated from " << argv[1] << " by bin2h.exe\n";
 
 	bool bWroteNamespace = false;
 	if(!A.ns.empty())
@@ -140,7 +140,7 @@ int main(int argc, char* argv[])
 
 	//stream the data through
 	int restart = 0;
-	for(unsigned i=0; i<filesize; )
+	for(size_t i=0; i<filesize; )
 	{
 		static const size_t bufferLen = 1024;
 		//buffer has to be unsigned for the sprintf to work as required.
