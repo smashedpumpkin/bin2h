@@ -2,18 +2,29 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
     branches: [ master ]
 
 jobs:
-  build:
+  build-macos:
 
     runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v2
     - name: configure
-      run: ls && mkdir build && cd build && cmake ..
+      run: mkdir build && cd build && cmake ..
+    - name: build
+      run: cmake --build build --config Debug
+
+  build-windows:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: mkdir build && cd build && cmake ..
     - name: build
       run: cmake --build build --config Debug
