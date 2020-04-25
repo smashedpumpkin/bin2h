@@ -24,6 +24,7 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <cstdarg>
 
 //prints help to stdout
 void Help()
