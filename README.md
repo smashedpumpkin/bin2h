@@ -1,10 +1,20 @@
 # bin2h
 
-Automatically exported from code.google.com/p/bin2h
+A small tool for converting binary data to a C-style uchar array for compiling straight into C/C++ code. 
 
-A small (and common) tool for converting binary data to a C-style uchar array for compiling straight into C/C++ code. 
+Builds with CMake & tested on Windows, MacOS. 
 
-Originally written because I couldn't find what I was looking for with Google. It is very similar to the one found on http://www.programmersheaven.com/download/16517/download.aspx, I knocked up a fresh version from scratch since the linked is a 16bit binary (won't run on a 64bit system) and the code is a little out of date now. 
+Binaries for tested platforms available via GitHub package feed.
 
-Published in the hope that it will save someone an hour or two. 
+Carried over from http://code.google.com/p/bin2h.
 
+---
+
+```bin2h utility v1.01
+
+Interprets any file as plain binary data and dumps to a raw C/C++ array.
+usage: bin2h <in-file> <out-file> <opt-args>
+
+Valid optional arguments:
+-id=<name> the C array is identified as "name". identifier is "data" if this argument is not present. bin2h does not check the identifier is valid in C/C++.
+-ns=<namespace> causes the data to be wrapped in a namespace. no namespace is inserted if this argument is not used.```

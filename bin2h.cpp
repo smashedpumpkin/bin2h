@@ -21,38 +21,9 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABI
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "targetver.h"
-
-#define VC_EXTRALEAN
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h> //for TEXT macro
-
-#include <tchar.h>
-
 #include <string>
 #include <iostream>
 #include <fstream>
-
-
-//map STL string and c-out to TCHAR
-typedef std::basic_string<TCHAR> tstring;
-
-#ifdef UNICODE
-
-#define tcout std::wcout
-//capital S maps unicode down to ASCII for consistent output format.
-static const char* kCommentFormat = "//file auto-generated from %S by bin2h.exe\n";
-static const char* kNamespaceFormat = "namespace %S \n{\n";
-static const char* kIdentifierFormat = "%S";
-
-#else
-
-#define tcout std::cout
-static const char* kCommentFormat = "//file auto-generated from %s by bin2h.exe\n";
-static const char* kNamespaceFormat = "namespace %s \n{\n";
-static const char* kIdentifierFormat = "%s";
-
-#endif
 
 //prints help to stdout
 void Help()
@@ -62,46 +33,50 @@ void Help()
 	std::cout << "Interprets any file as plain binary data and dumps to a raw C/C++ array.\n";
 	std::cout << "usage: bin2h <in-file> <out-file> <opt-args>\n\n";
 	
-	std::cout << "valid optional arguments:\n";
+	std::cout << "Valid optional arguments:\n";
 	std::cout << "-id=<name> the C array is identified as \"name\". identifier is \"data\" if this argument is not present. bin2h does not check the identifier is valid in C/C++.\n";
 	std::cout << "-ns=<namespace> causes the data to be wrapped in a namespace. no namespace is inserted if this argument is not used.\n";
 }
 
 //checks if main() argument looks like it might be an (optional) argument
-bool IsArg(_TCHAR* arg)
+bool IsArg(char* arg)
 {
-	return (_tcsncmp(arg, TEXT("-"), 1) == 0);
+	return (strncmp(arg, "-", 1) == 0);
 }
 
 struct Arguments
 {
-	tstring ns;
-	tstring id;
+	std::string ns;
+	std::string id;
 
-	Arguments() : id(TEXT("data")) {}
-};
-
-//read in optional arguments from the command line
-void ReadArgs(int argc, int start, _TCHAR* argv[], Arguments& outArgs)
-{
-	for(int i=start; i<argc; ++i)
+	Arguments() : id("data") {}
+	Arguments(int argc, char* argv[])
 	{
-		if(_tcsncmp(argv[i], TEXT("-id="), 4) == 0)
+		for(int i=0; i<argc; ++i)
 		{
-			outArgs.id = argv[i] + 4;	//highly dubious against TCHARs, but oh well...
-		}
-		else if(_tcsncmp(argv[i], TEXT("-ns="), 4) == 0)
-		{
-			outArgs.ns = argv[i] + 4;
+			if(strncmp(argv[i], "-id=", 4) == 0)
+			{
+				id = argv[i] + 4;
+			}
+			else if(strncmp(argv[i], "-ns=", 4) == 0)
+			{
+				ns = argv[i] + 4;
+			}
 		}
 	}
+};
+
+template<size_t n>
+int snprintf ( char (&s)[n], const char * format, ... )
+{
+	va_list args;
+  	va_start (args, format);
+	int r = vsnprintf(s, n, format, args);
+	va_end (args);
+	return r;
 }
 
-
-//so far as tchar-ness goes, the output should always be purely narrow character (native codepage).
-//the program itself should compile for either narrow or unicode mode.
-
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
 	//argv 1 should be a valid filename, and argv 2 is optionally something that a output stream
 	//can be opened against. after that, options.
@@ -117,7 +92,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	std::ifstream in(argv[1], std::ios_base::binary);
 	if(!in.is_open())
 	{
-		tcout << L"couldn't open " << argv[1] << L" for reading.\n\n";
+		std::cerr << L"couldn't open " << argv[1] << L" for reading.\n\n";
 		Help();
 		return 0;
 	}
@@ -129,7 +104,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		outfile.open(argv[2], std::ios_base::trunc);
 		if(!outfile.is_open())
 		{
-			tcout << L"couldn't open " << argv[2] << L"for writing.\n\n";
+			std::cerr << L"couldn't open " << argv[2] << L"for writing.\n\n";
 			Help();
 			in.close();
 			return 0;
@@ -138,49 +113,29 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	//stream to the output file, or std out if no file was provided
 	std::ostream& out = outfile.is_open() ? outfile : std::cout;
-
-	Arguments A;
-	ReadArgs(argc, bFileout ? 2:1, argv, A);
+	Arguments A(argc - (bFileout ? 2:1), argv + (bFileout ? 2:1));
 
 	//write out pre-amble
 
 	//insert a comment to indicate that this file was auto generated from some other file
-	{
-		char out_buffer[1024];
-		int  sprintf_count = sprintf_s(out_buffer, kCommentFormat, argv[1]);
-		out.write(out_buffer, sprintf_count);
-	}
+	out << "//file auto-generated from" << argv[1] << "by bin2h.exe\n";
 
 	bool bWroteNamespace = false;
 	if(!A.ns.empty())
 	{
-		char out_buffer[1024];
-		int  sprintf_count = sprintf_s(out_buffer, kNamespaceFormat, A.ns.c_str());
-		out.write(out_buffer, sprintf_count);
+		out << "namespace " << A.ns << " \n{\n";
 		bWroteNamespace = true;
 	}
 
-	//usual cheese to get file size
+	//get the file size
 	in.seekg(0, std::ios_base::end);
 	size_t filesize = in.tellg();
 	in.seekg(0, std::ios_base::beg);
 
-	//same trick as for namespace to get the id out
-	{
-		char out_buffer[1024];
-		int sprintf_count = sprintf_s(out_buffer, kIdentifierFormat, A.id.c_str());
-	
-		//array size, for use in code
-		out << "size_t ";
-		out.write(out_buffer, sprintf_count);
-		out << "_len = " << filesize << ";" << std::endl;
-
-		//and now, the array
-		out << "unsigned char "; 
-		out.write(out_buffer, sprintf_count);
-	}
-
-	out << "[" << filesize << "]=\n{\n\t";
+	//array size, for use in code
+	out << "size_t " << A.id << "_len = " << filesize << ";\n";
+	//and now, the array
+	out << "unsigned char " << A.id << "[" << filesize << "]=\n{\n\t";
 
 	//stream the data through
 	int restart = 0;
@@ -193,10 +148,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		const size_t chunk = i+bufferLen < filesize ? bufferLen : filesize-i;
 		in.read(reinterpret_cast<char*>(in_buffer), chunk);
 
+		char out_buffer[6];
 		for(unsigned j=0; j<chunk; ++j)
 		{
-			char out_buffer[128];
-			sprintf_s(out_buffer, "0x%.2hX,", in_buffer[j]);
+			snprintf(out_buffer, "0x%.2hX,", in_buffer[j]);
 			out << out_buffer;
 
 			++restart;
@@ -207,9 +162,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			}
 		}
 
-		i += chunk;
-		
-		
+		i += chunk;		
 	}
 
 	//post-amble - close array, then namespace
@@ -220,7 +173,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	if(outfile.is_open())
+	{
 		outfile.close();
+	}
 	in.close();
 
 	return 0;
