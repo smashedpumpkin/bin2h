@@ -16,7 +16,7 @@ jobs:
     - name: configure
       run: mkdir build && cd build && cmake ..
     - name: build
-      run: cmake --build build --config Debug
+      run: cmake --build build --config Release
 
   build-windows:
 
@@ -27,4 +27,9 @@ jobs:
     - name: configure
       run: mkdir build && cd build && cmake -A x64 ..
     - name: build
-      run: cmake --build build --config Debug
+      run: cmake --build build --config Release
+    - uses: actions/upload-artifact@v1
+      with: 
+        name: bin2h-windows-x64
+        path: build/Release/
+
