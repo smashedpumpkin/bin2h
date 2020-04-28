@@ -182,3 +182,35 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+#ifdef _WIN32
+int wmain(int argc, wchar_t* argv[])
+{
+	//This is used on Windows only, where UTF-8 support is (at time of writing) still an opt-in feature.
+	//Get a 16bit input from the system and convert to utf-8, then proceed as before.
+	//This isn't necessary on macOS where UTF-8 is the default encoding and it all just works.
+	char** argv8 = new char*[argc];
+	for(int i=0; i<argc; ++i)
+	{
+		//measure, allocate, convert
+		int n = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, nullptr, 0, NULL, NULL);
+		argv8[i] = new char[n]; //-1 parameter to WideCharToMulteByte yields size in bytes including 0 terminator 
+		if( 0 == WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, argv8[i], n, NULL, NULL))
+		{
+			std::cerr << "failed to convert argument " << argv[i] << "to utf-8, gle=" << GetLastError() <<std::endl;
+			return -1;
+		}
+	}
+	
+	//can now call with UTF-8 arguments
+	int r = main(argc, argv8);
+
+	//deallocate everything
+	for(int i=0; i<argc; ++i)
+	{
+		delete[] argv8[i];
+	}
+	delete[] argv8;
+
+	return r;
+}
+#endif
