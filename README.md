@@ -4,7 +4,7 @@ A small tool for converting binary data to a C-style uchar array for compiling s
 
 Builds with CMake & tested on Windows, MacOS. 
 
-Binaries for tested platforms available via GitHub package feed.
+Binaries for tested platforms available via Releases page.
 
 Carried over from http://code.google.com/p/bin2h.
 
