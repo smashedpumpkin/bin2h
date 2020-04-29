@@ -2,18 +2,38 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
   pull_request:
     branches: [ master ]
 
 jobs:
-  build:
+  build-macos:
 
     runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v2
     - name: configure
-      run: ls && mkdir build && cd build && cmake ..
+      run: mkdir build && cd build && cmake ..
     - name: build
-      run: cmake --build build --config Debug
+      run: cmake --build build --config Release
+    - uses: actions/upload-artifact@v1
+      with: 
+        name: bin2h-darwin
+        path: build
+
+  build-windows:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: mkdir build && cd build && cmake -A x64 ..
+    - name: build
+      run: cmake --build build --config Release
+    - uses: actions/upload-artifact@v1
+      with: 
+        name: bin2h-windows-x64
+        path: build/Release/
+

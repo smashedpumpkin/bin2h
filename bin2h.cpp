@@ -24,6 +24,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <cstdarg>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 //prints help to stdout
 void Help()
@@ -49,8 +55,8 @@ struct Arguments
 	std::string ns;
 	std::string id;
 
-	Arguments() : id("data") {}
 	Arguments(int argc, char* argv[])
+		: id("data")
 	{
 		for(int i=0; i<argc; ++i)
 		{
@@ -65,16 +71,6 @@ struct Arguments
 		}
 	}
 };
-
-template<size_t n>
-int snprintf ( char (&s)[n], const char * format, ... )
-{
-	va_list args;
-  	va_start (args, format);
-	int r = vsnprintf(s, n, format, args);
-	va_end (args);
-	return r;
-}
 
 int main(int argc, char* argv[])
 {
@@ -118,7 +114,7 @@ int main(int argc, char* argv[])
 	//write out pre-amble
 
 	//insert a comment to indicate that this file was auto generated from some other file
-	out << "//file auto-generated from" << argv[1] << "by bin2h.exe\n";
+	out << "//file auto-generated from " << argv[1] << " by bin2h.exe\n";
 
 	bool bWroteNamespace = false;
 	if(!A.ns.empty())
@@ -139,7 +135,7 @@ int main(int argc, char* argv[])
 
 	//stream the data through
 	int restart = 0;
-	for(unsigned i=0; i<filesize; )
+	for(size_t i=0; i<filesize; )
 	{
 		static const size_t bufferLen = 1024;
 		//buffer has to be unsigned for the sprintf to work as required.
@@ -148,10 +144,11 @@ int main(int argc, char* argv[])
 		const size_t chunk = i+bufferLen < filesize ? bufferLen : filesize-i;
 		in.read(reinterpret_cast<char*>(in_buffer), chunk);
 
-		char out_buffer[6];
+		static const int k_buff = 6;
+		char out_buffer[k_buff];
 		for(unsigned j=0; j<chunk; ++j)
 		{
-			snprintf(out_buffer, "0x%.2hX,", in_buffer[j]);
+			snprintf(out_buffer, k_buff, "0x%.2hX,", in_buffer[j]);
 			out << out_buffer;
 
 			++restart;
@@ -181,3 +178,36 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+
+#ifdef _WIN32
+int wmain(int argc, wchar_t* argv[])
+{
+	//This is used on Windows only, where UTF-8 support is (at time of writing) still an opt-in feature.
+	//Get a 16bit input from the system and convert to utf-8, then proceed as before.
+	//This isn't necessary on macOS where UTF-8 is the default encoding and it all just works.
+	char** argv8 = new char*[argc];
+	for(int i=0; i<argc; ++i)
+	{
+		//measure, allocate, convert
+		int n = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, nullptr, 0, NULL, NULL);
+		argv8[i] = new char[n]; //-1 parameter to WideCharToMulteByte yields size in bytes including 0 terminator 
+		if( 0 == WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, argv8[i], n, NULL, NULL))
+		{
+			std::cerr << "failed to convert argument " << argv[i] << "to utf-8, gle=" << GetLastError() <<std::endl;
+			return -1;
+		}
+	}
+	
+	//can now call with UTF-8 arguments
+	int r = main(argc, argv8);
+
+	//deallocate everything
+	for(int i=0; i<argc; ++i)
+	{
+		delete[] argv8[i];
+	}
+	delete[] argv8;
+
+	return r;
+}
+#endif
