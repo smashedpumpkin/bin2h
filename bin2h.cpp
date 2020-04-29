@@ -26,6 +26,11 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #include <fstream>
 #include <cstdarg>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 //prints help to stdout
 void Help()
 {
@@ -66,16 +71,6 @@ struct Arguments
 		}
 	}
 };
-
-template<size_t n>
-int snprintf ( char (&s)[n], const char * format, ... )
-{
-	va_list args;
-  	va_start (args, format);
-	int r = vsnprintf(s, n, format, args);
-	va_end (args);
-	return r;
-}
 
 int main(int argc, char* argv[])
 {
@@ -149,10 +144,11 @@ int main(int argc, char* argv[])
 		const size_t chunk = i+bufferLen < filesize ? bufferLen : filesize-i;
 		in.read(reinterpret_cast<char*>(in_buffer), chunk);
 
-		char out_buffer[6];
+		static const int k_buff = 6;
+		char out_buffer[k_buff];
 		for(unsigned j=0; j<chunk; ++j)
 		{
-			snprintf(out_buffer, "0x%.2hX,", in_buffer[j]);
+			snprintf(out_buffer, k_buff, "0x%.2hX,", in_buffer[j]);
 			out << out_buffer;
 
 			++restart;
@@ -181,6 +177,7 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+
 
 #ifdef _WIN32
 int wmain(int argc, wchar_t* argv[])
